@@ -1,735 +1,607 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>ISS Live Tracker | Real-Time Position</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <style>
+    :root {
+      --bg-main: #f8f9fa;
+      --card-bg: #ffffff;
+      --primary-blue: #1a73e8;
+      --text-dark: #1a1a2e;
+      --text-muted: #6b7280;
+      --border: #e5e7eb;
+      --green: #059669;
+      --orange: #ea580c;
+      --live-green: #43a047;
+      --shadow: 0 2px 8px rgba(0,0,0,0.07);
+      --shadow-hover: 0 6px 20px rgba(0,0,0,0.12);
+    }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
-    body {
-      font-family: 'Segoe UI', Arial, sans-serif;
-      background: #f8f9fa;
-      color: #1a1a2e;
-      min-height: 100vh;
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes pulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.82; transform:scale(1.05); } }
+    @keyframes blink { 0%,100% { opacity:1; box-shadow:0 0 10px var(--live-green); } 50% { opacity:.25; box-shadow:none; } }
+    @keyframes slideDown { from { transform:translateY(-100%); } to { transform:translateY(0); } }
+    @keyframes scrollBanner { 0% { transform:translateX(0); } 100% { transform:translateX(-50%); } }
+    @keyframes countUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes slideInRight { from { transform:translateX(420px); opacity:0; } to { transform:translateX(0); opacity:1; } }
+    @keyframes markerPulse {
+      0%,100% { box-shadow:0 0 0 0 rgba(26,115,232,.55),0 4px 18px rgba(26,115,232,.5); }
+      50% { box-shadow:0 0 0 10px rgba(26,115,232,0),0 4px 18px rgba(26,115,232,.5); }
     }
+    body { font-family:'Segoe UI',system-ui,Arial,sans-serif; background:var(--bg-main); color:var(--text-dark); min-height:100vh; }
 
-    /* ── HEADER ── */
-    header {
-      background: #ffffff;
-      border-bottom: 3px solid #1a73e8;
-      padding: 16px 24px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 12px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-      position: sticky;
-      top: 0;
-      z-index: 1000;
+    /* HEADER */
+    header { background:var(--card-bg); border-bottom:3px solid var(--primary-blue); padding:16px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; box-shadow:var(--shadow); position:sticky; top:0; z-index:1000; animation:slideDown .5s ease; }
+    .header-left { display:flex; align-items:center; gap:12px; }
+    .header-iss-icon { font-size:2.4rem; line-height:1; }
+    .header-left h1 { font-size:1.6rem; font-weight:700; color:var(--text-dark); letter-spacing:-.5px; }
+    .header-left h1 span { color:var(--primary-blue); }
+    .live-badge { display:flex; align-items:center; gap:7px; background:#e8f5e9; border:2px solid #66bb6a; border-radius:22px; padding:6px 14px; font-size:.85rem; font-weight:700; color:#2e7d32; animation:pulse 2s infinite; }
+    .live-dot { width:10px; height:10px; background:var(--live-green); border-radius:50%; animation:blink 1.4s infinite; }
+    .sdg-badges { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+    .sdg-label { font-size:.8rem; color:var(--text-muted); margin-right:4px; font-weight:600; }
+    .sdg-chip { padding:6px 13px; border-radius:14px; font-size:.78rem; font-weight:800; color:#fff; cursor:pointer; transition:all .28s ease; text-decoration:none; letter-spacing:.5px; }
+    .sdg-chip:hover { transform:translateY(-2px) scale(1.1); box-shadow:0 5px 14px rgba(0,0,0,.22); }
+    .sdg-4  { background:#c5192d; }
+    .sdg-9  { background:#fd6925; }
+    .sdg-13 { background:#3f7e44; }
+    .sdg-17 { background:#19486a; }
+
+    /* FACTS BANNER */
+    .facts-banner { background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%); color:white; padding:12px 0; overflow:hidden; border-bottom:2px solid #1557b0; }
+    .facts-scroll { display:flex; animation:scrollBanner 55s linear infinite; white-space:nowrap; }
+    .fact-item-banner { display:inline-flex; align-items:center; gap:8px; padding:0 44px; font-size:.9rem; font-weight:500; }
+    .fact-item-banner strong { color:#ffd740; font-weight:700; }
+
+    /* PAGE BODY */
+    .page-body { padding:22px 22px 0 22px; }
+
+    /* TOP 2-COL GRID: sidebar + map */
+    .top-grid { display:grid; grid-template-columns:330px 1fr; gap:22px; align-items:start; }
+    .side-panel { display:flex; flex-direction:column; gap:18px; }
+    .map-col { display:flex; flex-direction:column; gap:18px; min-width:0; }
+
+    /* FULL WIDTH SECTIONS */
+    .full-width-section { margin-top:22px; }
+
+    /* CARDS */
+    .card { background:var(--card-bg); border-radius:14px; padding:22px; box-shadow:var(--shadow); border:1px solid var(--border); transition:transform .28s ease,box-shadow .28s ease; animation:fadeInUp .55s ease backwards; }
+    .card:hover { transform:translateY(-3px); box-shadow:var(--shadow-hover); }
+    .card h2 { font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:1.3px; color:var(--text-muted); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+
+    /* DATA ROWS */
+    .data-row { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f3f5; font-size:.9rem; transition:background .2s ease,padding-left .2s ease; border-radius:6px; }
+    .data-row:last-child { border-bottom:none; }
+    .data-row:hover { background:rgba(26,115,232,.05); padding-left:8px; }
+    .data-row .lbl { color:var(--text-muted); font-weight:500; font-size:.88rem; }
+    .data-row .val { font-weight:700; color:var(--text-dark); font-family:'Courier New',monospace; font-size:.88rem; transition:all .3s ease; }
+    .val.updating { animation:countUp .3s ease; }
+    .val.green { color:var(--green); }
+    .val.blue { color:var(--primary-blue); }
+    .val.orange { color:var(--orange); }
+
+    /* ORBIT */
+    .orbit-progress { margin:14px 0 4px; text-align:center; }
+    .orbit-ring { width:136px; height:136px; margin:0 auto 12px; position:relative; }
+    .orbit-ring svg { transform:rotate(-90deg); }
+    .orbit-ring circle { fill:none; stroke-width:10; }
+    .orbit-ring .bg-circle { stroke:#e5e7eb; }
+    .orbit-ring .progress-circle { stroke:var(--primary-blue); stroke-linecap:round; transition:stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1); }
+    .orbit-text { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; }
+    .orbit-text .percent { font-size:1.65rem; font-weight:800; color:var(--primary-blue); line-height:1; }
+    .orbit-text .o-label { font-size:.68rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.8px; margin-top:2px; }
+    .orbit-stats { display:flex; justify-content:space-around; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); }
+    .orbit-stat .num { font-size:1.18rem; font-weight:800; color:var(--primary-blue); }
+    .orbit-stat .txt { font-size:.7rem; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-top:2px; }
+
+    /* MAP */
+    .map-card { background:var(--card-bg); border-radius:14px; overflow:hidden; box-shadow:var(--shadow); border:1px solid var(--border); animation:fadeInUp .55s ease .25s backwards; }
+    .map-toolbar { display:flex; align-items:center; justify-content:space-between; padding:14px 20px; background:linear-gradient(135deg,#f9fafb 0%,#eef2ff 100%); border-bottom:1px solid var(--border); flex-wrap:wrap; gap:10px; }
+    .map-toolbar-title { font-size:.93rem; font-weight:700; color:#374151; }
+    .toggle-group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    .toggle-btn { padding:7px 15px; border-radius:22px; border:2px solid #d1d5db; background:var(--card-bg); font-size:.78rem; font-weight:600; color:var(--text-muted); cursor:pointer; transition:all .25s ease; }
+    .toggle-btn.active { background:var(--primary-blue); border-color:var(--primary-blue); color:#fff; }
+    .toggle-btn:hover:not(.active) { border-color:var(--primary-blue); color:var(--primary-blue); transform:translateY(-1px); }
+    .toggle-btn:active { transform:scale(.97); }
+    #map { height:560px; width:100%; }
+    .iss-marker-inner { display:flex; align-items:center; justify-content:center; width:52px; height:52px; background:linear-gradient(135deg,#1a73e8,#0d47a1); border:3px solid #fff; border-radius:50%; font-size:28px; cursor:pointer; animation:markerPulse 2s infinite; }
+
+    /* POPUP */
+    .leaflet-popup-content-wrapper { background:linear-gradient(160deg,#1a1a2e 0%,#16213e 60%,#0f3460 100%); color:white; border-radius:14px; box-shadow:0 10px 30px rgba(0,0,0,.4); border:1px solid rgba(26,115,232,.4); }
+    .leaflet-popup-content { margin:0; font-family:'Segoe UI',Arial,sans-serif; width:260px !important; }
+    .leaflet-popup-tip-container { display:none; }
+    .popup-inner { padding:18px; }
+    .popup-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; padding-bottom:12px; border-bottom:1px solid rgba(255,255,255,.15); }
+    .popup-header .p-icon { font-size:2rem; line-height:1; }
+    .popup-header .p-title { font-size:.95rem; font-weight:700; color:#fff; line-height:1.2; }
+    .popup-header .p-sub { font-size:.72rem; color:rgba(255,255,255,.6); margin-top:2px; }
+    .popup-stats { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:10px; }
+    .popup-stat { background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.12); border-radius:8px; padding:9px 11px; }
+    .popup-stat .p-lbl { font-size:.66rem; color:rgba(255,255,255,.55); text-transform:uppercase; letter-spacing:.6px; margin-bottom:3px; }
+    .popup-stat .p-val { font-size:.88rem; font-weight:700; color:#fff; font-family:'Courier New',monospace; }
+    .popup-vis { background:rgba(26,115,232,.2); border:1px solid rgba(26,115,232,.4); border-radius:8px; padding:8px 11px; display:flex; align-items:center; gap:8px; font-size:.82rem; }
+    .popup-vis .vis-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; animation:blink 1.4s infinite; }
+    .popup-footer { margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.1); font-size:.7rem; color:rgba(255,255,255,.4); text-align:center; }
+
+    /* ERROR */
+    #error-banner { display:none; background:#fef3c7; border:2px solid #fbbf24; border-radius:10px; padding:13px 18px; font-size:.87rem; color:#92400e; animation:fadeInUp .3s ease; }
+
+    /* CREW FULL WIDTH */
+    .crew-card-wrap { background:var(--card-bg); border-radius:14px; padding:22px 26px; box-shadow:var(--shadow); border:1px solid var(--border); animation:fadeInUp .55s ease .4s backwards; transition:transform .28s ease,box-shadow .28s ease; }
+    .crew-card-wrap:hover { transform:translateY(-3px); box-shadow:var(--shadow-hover); }
+    .crew-card-wrap h2 { font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:1.3px; color:var(--text-muted); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+    .crew-grid { display:flex; flex-wrap:wrap; gap:10px; }
+    .crew-pill { background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%); color:white; padding:9px 16px; border-radius:30px; cursor:pointer; transition:all .28s ease; box-shadow:0 2px 8px rgba(26,115,232,.25); text-decoration:none; display:inline-flex; align-items:center; gap:9px; border:1.5px solid rgba(255,255,255,.18); }
+    .crew-pill:hover { transform:translateY(-2px) scale(1.04); box-shadow:0 6px 18px rgba(26,115,232,.42); }
+    .crew-avatar { width:30px; height:30px; background:rgba(255,255,255,.2); border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:.76rem; font-weight:800; border:1.5px solid rgba(255,255,255,.35); flex-shrink:0; }
+    .crew-name { font-size:.82rem; font-weight:600; line-height:1.2; }
+
+    /* SDG FULL WIDTH */
+    .sdg-section { background:var(--card-bg); border-radius:14px; padding:24px 26px; box-shadow:var(--shadow); border:1px solid var(--border); animation:fadeInUp .55s ease .5s backwards; transition:transform .28s ease,box-shadow .28s ease; }
+    .sdg-section:hover { transform:translateY(-3px); box-shadow:var(--shadow-hover); }
+    .sdg-section h2 { font-size:.82rem; font-weight:700; text-transform:uppercase; letter-spacing:1.3px; color:var(--text-muted); margin-bottom:8px; display:flex; align-items:center; gap:8px; }
+    .sdg-section > p { font-size:.86rem; color:var(--text-muted); line-height:1.65; margin-bottom:18px; }
+    .sdg-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+    .sdg-card { border-radius:12px; padding:20px 18px; color:#fff; transition:all .28s ease; cursor:pointer; text-decoration:none; display:block; min-height:170px; }
+    .sdg-card:hover { transform:translateY(-5px) scale(1.02); box-shadow:0 12px 28px rgba(0,0,0,.25); }
+    .sdg-card .sdg-num { font-size:2.4rem; font-weight:900; line-height:1; margin-bottom:6px; }
+    .sdg-card .sdg-goal-label { font-size:.63rem; text-transform:uppercase; letter-spacing:.8px; opacity:.7; margin-bottom:5px; }
+    .sdg-card .sdg-title { font-weight:700; margin-bottom:8px; font-size:.88rem; line-height:1.3; }
+    .sdg-card .sdg-desc { font-size:.76rem; opacity:.9; line-height:1.52; }
+
+    /* TOAST */
+    .toast { position:fixed; bottom:26px; right:26px; background:var(--card-bg); border-radius:12px; padding:16px 20px; box-shadow:0 6px 24px rgba(0,0,0,.18); border-left:5px solid var(--primary-blue); display:none; align-items:center; gap:12px; z-index:3000; animation:slideInRight .3s ease; min-width:260px; }
+    .toast.show { display:flex; }
+    .toast.success { border-left-color:var(--green); }
+    .toast.error { border-left-color:#ef4444; }
+    .toast-icon { font-size:1.5rem; }
+    .toast-title { font-weight:700; font-size:.9rem; margin-bottom:2px; }
+    .toast-message { font-size:.8rem; color:var(--text-muted); }
+
+    /* FOOTER */
+    footer { background:var(--card-bg); border-top:1px solid var(--border); padding:24px 28px; margin-top:22px; }
+    .footer-content { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:20px; }
+    .footer-left p { font-size:.8rem; color:var(--text-muted); line-height:1.65; margin-bottom:6px; }
+    .footer-left p:last-child { margin-bottom:0; }
+    .footer-left a { color:var(--primary-blue); text-decoration:none; font-weight:600; transition:color .2s; }
+    .footer-left a:hover { text-decoration:underline; }
+    .footer-right { text-align:right; }
+    .footer-right h4 { font-size:.72rem; font-weight:700; color:var(--text-dark); margin-bottom:10px; text-transform:uppercase; letter-spacing:1.2px; }
+    .contact-links { display:flex; gap:12px; justify-content:flex-end; }
+    .contact-link { display:flex; align-items:center; justify-content:center; width:44px; height:44px; background:#f3f4f6; border-radius:50%; text-decoration:none; color:var(--text-dark); transition:all .28s ease; border:2px solid transparent; }
+    .contact-link i { font-size:1.3rem; }
+    .contact-link:hover { transform:translateY(-3px); box-shadow:0 6px 16px rgba(0,0,0,.15); }
+    .contact-link.linkedin:hover { background:#0077b5; color:white; border-color:#0077b5; }
+    .contact-link.github:hover   { background:#24292e; color:white; border-color:#24292e; }
+    .contact-link.email:hover    { background:#ea4335; color:white; border-color:#ea4335; }
+
+    /* RESPONSIVE */
+    @media (max-width:960px) {
+      .top-grid { grid-template-columns:1fr; }
+      .sdg-grid { grid-template-columns:repeat(2,1fr); }
+      .page-body { padding:18px 14px 0 14px; }
+      footer { padding:24px 14px; }
     }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 12px;
+    @media (max-width:600px) {
+      .sdg-badges { display:none; }
+      #map { height:420px; }
+      .header-left h1 { font-size:1.25rem; }
+      .toast { bottom:14px; right:14px; left:14px; }
+      .page-body { padding:12px 10px 0 10px; }
+      .footer-right { text-align:left; }
+      .contact-links { justify-content:flex-start; }
+      footer { padding:20px 10px; }
     }
-
-    .header-left h1 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: #1a1a2e;
-      letter-spacing: -0.5px;
-    }
-
-    .header-left h1 span {
-      color: #1a73e8;
-    }
-
-    .live-badge {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      background: #e8f5e9;
-      border: 2px solid #66bb6a;
-      border-radius: 20px;
-      padding: 5px 12px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #2e7d32;
-    }
-
-    .live-dot {
-      width: 8px;
-      height: 8px;
-      background: #43a047;
-      border-radius: 50%;
-      animation: blink 1.4s infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; box-shadow: 0 0 8px #43a047; }
-      50% { opacity: 0.3; box-shadow: none; }
-    }
-
-    .sdg-badges {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      flex-wrap: wrap;
-    }
-
-    .sdg-label {
-      font-size: 0.75rem;
-      color: #666;
-      margin-right: 4px;
-      white-space: nowrap;
-    }
-
-    .sdg-chip {
-      padding: 4px 10px;
-      border-radius: 12px;
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #fff;
-      white-space: nowrap;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-
-    .sdg-chip:hover {
-      transform: scale(1.08);
-    }
-
-    .sdg-4  { background: #c5192d; }
-    .sdg-9  { background: #fd6925; }
-    .sdg-13 { background: #3f7e44; }
-    .sdg-17 { background: #19486a; }
-
-    /* ── LAYOUT ── */
-    .main-wrap {
-      max-width: 1400px;
-      margin: 24px auto;
-      padding: 0 20px;
-      display: grid;
-      grid-template-columns: 320px 1fr;
-      gap: 20px;
-    }
-
-    .side-panel {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .map-wrap {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    /* ── CARD ── */
-    .card {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      border: 1px solid #e5e7eb;
-      transition: transform 0.2s, box-shadow 0.2s;
-    }
-
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 16px rgba(0,0,0,0.1);
-    }
-
-    .card h2 {
-      font-size: 0.8rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      color: #6b7280;
-      margin-bottom: 16px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .data-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid #f3f4f6;
-      font-size: 0.9rem;
-    }
-
-    .data-row:last-child { border-bottom: none; }
-    .data-row .lbl { color: #6b7280; font-weight: 500; }
-    .data-row .val {
-      font-weight: 700;
-      color: #111827;
-      font-family: 'Courier New', monospace;
-      font-size: 0.88rem;
-    }
-
-    .val.green  { color: #059669; }
-    .val.blue   { color: #1a73e8; }
-    .val.orange { color: #ea580c; }
-
-    .astronaut-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px;
-      margin: 4px 0;
-      border-radius: 8px;
-      font-size: 0.88rem;
-      transition: background 0.2s;
-    }
-
-    .astronaut-item:hover {
-      background: #f3f4f6;
-    }
-
-    .astronaut-avatar {
-      width: 38px;
-      height: 38px;
-      background: linear-gradient(135deg, #1a73e8, #0d47a1);
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: #fff;
-      font-size: 1rem;
-      font-weight: 600;
-      flex-shrink: 0;
-    }
-
-    .astronaut-name { font-weight: 600; color: #111827; }
-    .astronaut-craft { font-size: 0.75rem; color: #6b7280; }
-
-    .fact-item {
-      display: flex;
-      flex-direction: column;
-      padding: 8px 0;
-      border-bottom: 1px solid #f3f4f6;
-      font-size: 0.85rem;
-    }
-
-    .fact-item:last-child { border-bottom: none; }
-    .fact-label { color: #6b7280; font-size: 0.75rem; margin-bottom: 3px; }
-    .fact-value { font-weight: 700; color: #111827; }
-
-    /* ── MAP ── */
-    .map-card {
-      background: #ffffff;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      border: 1px solid #e5e7eb;
-    }
-
-    .map-toolbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 20px;
-      background: #f9fafb;
-      border-bottom: 1px solid #e5e7eb;
-      flex-wrap: wrap;
-      gap: 10px;
-    }
-
-    .map-toolbar-title {
-      font-size: 0.92rem;
-      font-weight: 700;
-      color: #374151;
-    }
-
-    .toggle-group {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .toggle-btn {
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 2px solid #d1d5db;
-      background: #ffffff;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: #6b7280;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .toggle-btn.active {
-      background: #1a73e8;
-      border-color: #1a73e8;
-      color: #ffffff;
-    }
-
-    .toggle-btn:hover:not(.active) {
-      border-color: #1a73e8;
-      color: #1a73e8;
-    }
-
-    #map {
-      height: 580px;
-      width: 100%;
-    }
-
-    /* ── SDG SECTION ── */
-    .sdg-section {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-      border: 1px solid #e5e7eb;
-    }
-
-    .sdg-section h2 {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #111827;
-      margin-bottom: 10px;
-    }
-
-    .sdg-section p {
-      font-size: 0.88rem;
-      color: #6b7280;
-      line-height: 1.6;
-      margin-bottom: 20px;
-    }
-
-    .sdg-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-    }
-
-    .sdg-card {
-      border-radius: 10px;
-      padding: 20px 16px;
-      color: #fff;
-      font-size: 0.8rem;
-      transition: transform 0.2s, box-shadow 0.2s;
-      cursor: default;
-    }
-
-    .sdg-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-    }
-
-    .sdg-card .sdg-num {
-      font-size: 2rem;
-      font-weight: 800;
-      line-height: 1;
-      margin-bottom: 8px;
-    }
-
-    .sdg-card .sdg-title {
-      font-weight: 700;
-      margin-bottom: 8px;
-      font-size: 0.88rem;
-      line-height: 1.3;
-    }
-
-    .sdg-card .sdg-desc {
-      font-size: 0.75rem;
-      opacity: 0.95;
-      line-height: 1.5;
-    }
-
-    #error-banner {
-      display: none;
-      background: #fef3c7;
-      border: 2px solid #fbbf24;
-      border-radius: 8px;
-      padding: 12px 18px;
-      font-size: 0.85rem;
-      color: #92400e;
-      margin-bottom: 12px;
-    }
-
-    /* ── FOOTER ── */
-    footer {
-      text-align: center;
-      padding: 24px;
-      font-size: 0.8rem;
-      color: #6b7280;
-      margin-top: 20px;
-      background: #ffffff;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    footer a {
-      color: #1a73e8;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    footer a:hover {
-      text-decoration: underline;
-    }
-
-    /* ── RESPONSIVE ── */
-    @media (max-width: 900px) {
-      .main-wrap { grid-template-columns: 1fr; }
-      .side-panel { display: grid; grid-template-columns: 1fr 1fr; }
-      .sdg-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-
-    @media (max-width: 580px) {
-      .side-panel { grid-template-columns: 1fr; }
-      .sdg-grid { grid-template-columns: 1fr; }
-      .sdg-badges { display: none; }
-      #map { height: 400px; }
-      .header-left h1 { font-size: 1.2rem; }
-    }
-
-    /* ISS Marker glow effect */
-    .iss-marker-glow {
-      animation: markerGlow 2s infinite;
-    }
-
-    @keyframes markerGlow {
-      0%, 100% {
-        filter: drop-shadow(0 0 8px rgba(26, 115, 232, 0.8));
-      }
-      50% {
-        filter: drop-shadow(0 0 16px rgba(26, 115, 232, 1));
-      }
+    @media (max-width:420px) {
+      .sdg-grid { grid-template-columns:1fr 1fr; }
     }
   </style>
 </head>
 <body>
 
-<header>
+<header role="banner">
   <div class="header-left">
-    <span aria-hidden="true" style="font-size:2rem;">🛰️</span>
+    <span class="header-iss-icon" aria-hidden="true">&#128752;&#65039;</span>
     <h1>ISS <span>Live</span> Tracker</h1>
-    <div class="live-badge" role="status" aria-live="polite" aria-label="Status: Live tracking active">
-      <span class="live-dot"></span> LIVE
-    </div>
+    <div class="live-badge" aria-live="polite"><span class="live-dot"></span> LIVE</div>
   </div>
   <nav class="sdg-badges" aria-label="UN SDG alignment">
     <span class="sdg-label">UN SDGs:</span>
-    <span class="sdg-chip sdg-4"  title="SDG 4 – Quality Education">4</span>
-    <span class="sdg-chip sdg-9"  title="SDG 9 – Industry, Innovation & Infrastructure">9</span>
-    <span class="sdg-chip sdg-13" title="SDG 13 – Climate Action">13</span>
-    <span class="sdg-chip sdg-17" title="SDG 17 – Partnerships for the Goals">17</span>
+    <a href="https://sdgs.un.org/goals/goal4"  target="_blank" class="sdg-chip sdg-4"  title="SDG 4 - Quality Education">4</a>
+    <a href="https://sdgs.un.org/goals/goal9"  target="_blank" class="sdg-chip sdg-9"  title="SDG 9 - Innovation and Infrastructure">9</a>
+    <a href="https://sdgs.un.org/goals/goal13" target="_blank" class="sdg-chip sdg-13" title="SDG 13 - Climate Action">13</a>
+    <a href="https://sdgs.un.org/goals/goal17" target="_blank" class="sdg-chip sdg-17" title="SDG 17 - Partnerships for the Goals">17</a>
   </nav>
 </header>
 
-<main class="main-wrap">
+<div class="facts-banner" aria-hidden="true">
+  <div class="facts-scroll">
+    <span class="fact-item-banner">&#128640; <strong>First Module:</strong> Zarya, launched 20 Nov 1998</span>
+    <span class="fact-item-banner">&#9201;&#65039; <strong>Orbit Period:</strong> approx. 92 minutes</span>
+    <span class="fact-item-banner">&#127759; <strong>Orbits per Day:</strong> approx. 15.5</span>
+    <span class="fact-item-banner">&#128207; <strong>Size:</strong> 109 m x 73 m, about the size of a football field</span>
+    <span class="fact-item-banner">&#9889; <strong>Solar Power:</strong> 120 kW</span>
+    <span class="fact-item-banner">&#128101; <strong>Partners:</strong> NASA &middot; ESA &middot; JAXA &middot; CSA &middot; Roscosmos</span>
+    <span class="fact-item-banner">&#129351;&#65039; <strong>Mass:</strong> approx. 420,000 kg</span>
+    <span class="fact-item-banner">&#127777;&#65039; <strong>External Temp:</strong> -157 C to +121 C</span>
+    <span class="fact-item-banner">&#129514; <strong>Experiments:</strong> 3,000+ science studies conducted</span>
+    <span class="fact-item-banner">&#128640; <strong>First Module:</strong> Zarya, launched 20 Nov 1998</span>
+    <span class="fact-item-banner">&#9201;&#65039; <strong>Orbit Period:</strong> approx. 92 minutes</span>
+    <span class="fact-item-banner">&#127759; <strong>Orbits per Day:</strong> approx. 15.5</span>
+    <span class="fact-item-banner">&#128207; <strong>Size:</strong> 109 m x 73 m, about the size of a football field</span>
+    <span class="fact-item-banner">&#9889; <strong>Solar Power:</strong> 120 kW</span>
+    <span class="fact-item-banner">&#128101; <strong>Partners:</strong> NASA &middot; ESA &middot; JAXA &middot; CSA &middot; Roscosmos</span>
+    <span class="fact-item-banner">&#129351;&#65039; <strong>Mass:</strong> approx. 420,000 kg</span>
+    <span class="fact-item-banner">&#127777;&#65039; <strong>External Temp:</strong> -157 C to +121 C</span>
+    <span class="fact-item-banner">&#129514; <strong>Experiments:</strong> 3,000+ science studies conducted</span>
+  </div>
+</div>
 
-  <aside class="side-panel" aria-label="ISS live data">
-    <section class="card" aria-label="Live ISS position">
-      <h2>📡 Live Position</h2>
-      <div class="data-row"><span class="lbl">Latitude</span><span class="val blue" id="lat" aria-live="polite">—</span></div>
-      <div class="data-row"><span class="lbl">Longitude</span><span class="val blue" id="lon" aria-live="polite">—</span></div>
-      <div class="data-row"><span class="lbl">Altitude</span><span class="val orange" id="alt" aria-live="polite">—</span></div>
-      <div class="data-row"><span class="lbl">Velocity</span><span class="val orange" id="vel" aria-live="polite">—</span></div>
-      <div class="data-row"><span class="lbl">Visibility</span><span class="val green" id="vis" aria-live="polite">—</span></div>
-      <div class="data-row"><span class="lbl">Updated</span><span class="val" id="updated" aria-live="polite">—</span></div>
-    </section>
+<div class="page-body">
 
-    <section class="card" aria-label="ISS current crew">
-      <h2>👨‍🚀 Current Crew</h2>
-      <div id="crew-list" role="list">
-        <p style="color:#9ca3af;font-size:0.85rem;">Loading crew…</p>
-      </div>
-    </section>
+  <!-- TOP: sidebar + map -->
+  <div class="top-grid" role="main">
 
-    <section class="card" aria-label="ISS facts">
-      <h2>📋 ISS Facts</h2>
-      <div class="fact-item"><span class="fact-label">First Module Launched</span><span class="fact-value">20 Nov 1998</span></div>
-      <div class="fact-item"><span class="fact-label">Orbit Period</span><span class="fact-value">~92 minutes</span></div>
-      <div class="fact-item"><span class="fact-label">Orbits per Day</span><span class="fact-value">~15.5 orbits</span></div>
-      <div class="fact-item"><span class="fact-label">Avg Altitude</span><span class="fact-value">~408 km</span></div>
-      <div class="fact-item"><span class="fact-label">Size</span><span class="fact-value">109m × 73m</span></div>
-      <div class="fact-item"><span class="fact-label">Partners</span><span class="fact-value">NASA · ESA · JAXA · CSA · Roscosmos</span></div>
-    </section>
-  </aside>
+    <aside class="side-panel" aria-label="ISS live telemetry">
 
-  <div class="map-wrap">
-    <div id="error-banner" role="alert" aria-live="assertive">
-      ⚠️ Could not reach ISS API. Showing last known position. Retrying…
-    </div>
+      <section class="card" style="animation-delay:.1s" aria-label="Live ISS position">
+        <h2>&#128225; Live Position</h2>
+        <div class="data-row"><span class="lbl">Latitude</span><span class="val blue" id="lat" aria-live="polite">Loading</span></div>
+        <div class="data-row"><span class="lbl">Longitude</span><span class="val blue" id="lon" aria-live="polite">Loading</span></div>
+        <div class="data-row"><span class="lbl">Altitude</span><span class="val orange" id="alt" aria-live="polite">Loading</span></div>
+        <div class="data-row"><span class="lbl">Velocity</span><span class="val orange" id="vel" aria-live="polite">Loading</span></div>
+        <div class="data-row"><span class="lbl">Visibility</span><span class="val green" id="vis" aria-live="polite">Loading</span></div>
+        <div class="data-row"><span class="lbl">Last Updated</span><span class="val" id="updated" aria-live="polite">Loading</span></div>
+      </section>
 
-    <div class="map-card">
-      <div class="map-toolbar">
-        <span class="map-toolbar-title">🗺️ Live Ground Track</span>
-        <div class="toggle-group" role="group" aria-label="Map layer controls">
-          <button class="toggle-btn active" id="btn-track" onclick="toggleLayer('track')" aria-pressed="true">Ground Track</button>
-          <button class="toggle-btn active" id="btn-predict" onclick="toggleLayer('predict')" aria-pressed="true">Trajectory</button>
-          <button class="toggle-btn active" id="btn-center" onclick="toggleCenter()" aria-pressed="true">Follow ISS</button>
+      <section class="card" style="animation-delay:.2s" aria-label="Orbit progress">
+        <h2>&#128260; Orbit Progress</h2>
+        <div class="orbit-progress">
+          <div class="orbit-ring">
+            <svg width="136" height="136" role="img" aria-label="Orbit progress ring">
+              <circle class="bg-circle" cx="68" cy="68" r="58"></circle>
+              <circle class="progress-circle" cx="68" cy="68" r="58" id="progressCircle" stroke-dasharray="364.4" stroke-dashoffset="364.4"></circle>
+            </svg>
+            <div class="orbit-text">
+              <div class="percent" id="orbitPercent">0%</div>
+              <div class="o-label">Complete</div>
+            </div>
+          </div>
+          <div class="orbit-stats">
+            <div class="orbit-stat"><div class="num" id="orbitCount">0</div><div class="txt">Orbits Today</div></div>
+            <div class="orbit-stat"><div class="num" id="timeLeft">0</div><div class="txt">Min Remaining</div></div>
+          </div>
         </div>
+      </section>
+
+    </aside>
+
+    <div class="map-col">
+      <div id="error-banner" role="alert" aria-live="assertive">Could not reach ISS API. Showing last known position. Retrying...</div>
+      <div class="map-card">
+        <div class="map-toolbar">
+          <span class="map-toolbar-title">&#128506;&#65039; Live Ground Track &middot; Satellite View</span>
+          <div class="toggle-group" role="group" aria-label="Map controls">
+            <button class="toggle-btn active" id="btn-track"   onclick="toggleLayer('track')"   aria-pressed="true">&#128756;&#65039; Ground Track</button>
+            <button class="toggle-btn active" id="btn-predict" onclick="toggleLayer('predict')" aria-pressed="true">&#127919; Trajectory</button>
+            <button class="toggle-btn active" id="btn-center"  onclick="toggleCenter()"          aria-pressed="true">&#128205; Follow ISS</button>
+          </div>
+        </div>
+        <div id="map" aria-label="Interactive satellite map of ISS position"></div>
       </div>
-      <div id="map" role="region" aria-label="Interactive satellite map showing real-time ISS position"></div>
     </div>
 
-    <section class="sdg-section" aria-label="UN Sustainable Development Goals">
-      <h2>🎯 UN Sustainable Development Goals Alignment</h2>
-      <p>This ISS Live Tracker actively supports four UN SDGs by making real-time orbital science accessible, advancing open geospatial infrastructure, raising climate awareness, and celebrating international space partnership.</p>
+  </div>
 
+  <!-- FULL WIDTH: Crew -->
+  <div class="full-width-section">
+    <div class="crew-card-wrap" aria-label="Current crew aboard the ISS">
+      <h2>&#128104;&#8205;&#128640; Current Crew Aboard the ISS</h2>
+      <div id="crew-list" class="crew-grid" role="list" aria-label="ISS crew members">
+        <p style="color:#9ca3af;font-size:.84rem;">Loading crew members...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- FULL WIDTH: SDG -->
+  <div class="full-width-section">
+    <section class="sdg-section" aria-label="UN SDG alignment">
+      <h2>&#127919; UN SDG Alignment</h2>
+      <p>This tracker supports four UN Sustainable Development Goals by making orbital science accessible, advancing open geospatial infrastructure, raising climate awareness, and celebrating international collaboration in space.</p>
       <div class="sdg-grid">
-        <div class="sdg-card" style="background: #c5192d;" role="article" aria-label="SDG 4 Quality Education">
+
+        <a href="https://sdgs.un.org/goals/goal4" target="_blank" rel="noopener" class="sdg-card" style="background:#c5192d;" aria-label="SDG 4 - Quality Education">
           <div class="sdg-num">04</div>
+          <div class="sdg-goal-label">Goal 4</div>
           <div class="sdg-title">Quality Education</div>
-          <div class="sdg-desc">Interactive STEM tool that visualizes real orbital data for students and educators worldwide, making space science accessible to everyone.</div>
-        </div>
+          <div class="sdg-desc">Interactive STEM tool visualizing real orbital data for students and educators worldwide, making space science accessible to all.</div>
+        </a>
 
-        <div class="sdg-card" style="background: #fd6925;" role="article" aria-label="SDG 9 Industry Innovation">
+        <a href="https://sdgs.un.org/goals/goal9" target="_blank" rel="noopener" class="sdg-card" style="background:#fd6925;" aria-label="SDG 9 - Industry, Innovation and Infrastructure">
           <div class="sdg-num">09</div>
-          <div class="sdg-title">Industry, Innovation & Infrastructure</div>
-          <div class="sdg-desc">Demonstrates open-source geospatial technology and live API-driven infrastructure, promoting accessible innovation for all.</div>
-        </div>
+          <div class="sdg-goal-label">Goal 9</div>
+          <div class="sdg-title">Industry, Innovation and Infrastructure</div>
+          <div class="sdg-desc">Open-source geospatial technology and live API-driven infrastructure promoting accessible innovation globally.</div>
+        </a>
 
-        <div class="sdg-card" style="background: #3f7e44;" role="article" aria-label="SDG 13 Climate Action">
+        <a href="https://sdgs.un.org/goals/goal13" target="_blank" rel="noopener" class="sdg-card" style="background:#3f7e44;" aria-label="SDG 13 - Climate Action">
           <div class="sdg-num">13</div>
+          <div class="sdg-goal-label">Goal 13</div>
           <div class="sdg-title">Climate Action</div>
-          <div class="sdg-desc">The ISS carries instruments monitoring CO₂, sea levels, ice sheets, and extreme weather patterns critical for climate research.</div>
-        </div>
+          <div class="sdg-desc">ISS instruments continuously monitor CO2, sea levels, ice sheets, and extreme weather patterns critical for climate research.</div>
+        </a>
 
-        <div class="sdg-card" style="background: #19486a;" role="article" aria-label="SDG 17 Partnerships">
+        <a href="https://sdgs.un.org/goals/goal17" target="_blank" rel="noopener" class="sdg-card" style="background:#19486a;" aria-label="SDG 17 - Partnerships for the Goals">
           <div class="sdg-num">17</div>
+          <div class="sdg-goal-label">Goal 17</div>
           <div class="sdg-title">Partnerships for the Goals</div>
-          <div class="sdg-desc">Built on 15-nation collaboration between NASA, ESA, JAXA, CSA, and Roscosmos — a model for global partnership in science.</div>
-        </div>
+          <div class="sdg-desc">15-nation collaboration between NASA, ESA, JAXA, CSA and Roscosmos serves as a model for global partnership in science.</div>
+        </a>
+
       </div>
     </section>
   </div>
-</main>
+
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite">
+  <span class="toast-icon" id="toastIcon">&#10003;</span>
+  <div class="toast-content">
+    <div class="toast-title" id="toastTitle">Success</div>
+    <div class="toast-message" id="toastMessage">Data updated successfully</div>
+  </div>
+</div>
 
 <footer>
-  <p>
-    Data: <a href="https://wheretheiss.at/" target="_blank" rel="noopener">WhereTheISS.at API</a> &nbsp;|&nbsp;
-    Map: <a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet.js</a> &nbsp;|&nbsp;
-    <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener">NASA Spot the Station</a>
-  </p>
-  <p style="margin-top:8px;">M.Sc. Geoinformatics · WebGIS Project · Bharati Vidyapeeth's Institute Of Environment Education And Research, Pune</p>
+  <div class="footer-content">
+    <div class="footer-left">
+      <p>
+        <strong>Data Sources:</strong>
+        <a href="https://wheretheiss.at/" target="_blank" rel="noopener">WhereTheISS.at API</a> &middot;
+        <a href="https://github.com/corquaid/international-space-station-APIs" target="_blank" rel="noopener">ISS People API</a> &middot;
+        <a href="https://leafletjs.com" target="_blank" rel="noopener">Leaflet.js</a> &middot;
+        <a href="https://spotthestation.nasa.gov/" target="_blank" rel="noopener">NASA Spot the Station</a>
+      </p>
+      <p>
+        <strong>Developed by:</strong> Vaibhav Shivaji Nagare &middot; M.Sc. Geoinformatics &middot;
+        Bharati Vidyapeeth Institute of Environment Education and Research, Pune
+      </p>
+    </div>
+    <div class="footer-right">
+      <h4>Reach Out</h4>
+      <div class="contact-links">
+        <a href="https://www.linkedin.com/in/vaibhav-nagare-gis" target="_blank" rel="noopener" class="contact-link linkedin" title="LinkedIn - Vaibhav Nagare"><i class="fab fa-linkedin-in"></i></a>
+        <a href="https://github.com/VaibhavNagare-GIS" target="_blank" rel="noopener" class="contact-link github" title="GitHub - VaibhavNagare-GIS"><i class="fab fa-github"></i></a>
+        <a href="mailto:vaibhavnagare20@gmail.com" class="contact-link email" title="Email - vaibhavnagare20@gmail.com"><i class="fas fa-envelope"></i></a>
+      </div>
+    </div>
+  </div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-  const API_URL = "https://api.wheretheiss.at/v1/satellites/25544";
-  const CREW_URL = "https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json";
-  const INTERVAL = 3000; // 3 seconds
+var API_URL  = "https://api.wheretheiss.at/v1/satellites/25544";
+var CREW_URL = "https://corquaid.github.io/international-space-station-APIs/JSON/people-in-space.json";
+var INTERVAL = 5000;
+var ORBIT_MS = 92 * 60 * 1000;
+var CIRC     = 2 * Math.PI * 58;
 
-  // Initialize map with satellite imagery
-  const map = L.map("map", {
-    center: [20, 0],
-    zoom: 3,
-    minZoom: 2,
-    maxZoom: 10,
-    zoomControl: true
-  });
+var map = L.map("map", { center: [20, 0], zoom: 3, minZoom: 2, maxZoom: 10 });
 
-  // Satellite imagery basemap (colorful Earth view)
-  L.tileLayer(
-    "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    {
-      attribution: 'Imagery &copy; <a href="https://www.esri.com/">Esri</a>',
-      maxZoom: 18
-    }
-  ).addTo(map);
+L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  { attribution: 'Imagery &copy; <a href="https://www.esri.com/">Esri</a>', maxZoom: 18 }).addTo(map);
 
-  // Add labels/borders overlay for better visibility
-  L.tileLayer(
-    "https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
-    {
-      attribution: '',
-      subdomains: 'abcd',
-      maxZoom: 20,
-      opacity: 0.7
-    }
-  ).addTo(map);
+L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png",
+  { attribution: '', subdomains: 'abcd', maxZoom: 20, opacity: 0.6 }).addTo(map);
 
-  // Custom ISS marker with glow effect
-  const issIcon = L.divIcon({
-    className: "iss-marker-glow",
-    html: `
-      <div style="
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        width:50px;
-        height:50px;
-        background: linear-gradient(135deg, #1a73e8, #0d47a1);
-        border:3px solid #ffffff;
-        border-radius:50%;
-        box-shadow: 0 4px 16px rgba(26, 115, 232, 0.5);
-        font-size:26px;
-        cursor:pointer;
-      " title="ISS Current Position" aria-label="ISS marker">🛰️</div>`,
-    iconSize: [50, 50],
-    iconAnchor: [25, 25],
-    popupAnchor: [0, -28]
-  });
+L.control.scale({ imperial: false, position: "bottomright" }).addTo(map);
 
-  let issMarker = L.marker([0, 0], { icon: issIcon })
-    .addTo(map)
-    .bindPopup("Loading ISS data…");
+var issIcon = L.divIcon({
+  className: "",
+  html: '<div class="iss-marker-inner" title="Click for ISS details">' + String.fromCodePoint(128752,65039) + '</div>',
+  iconSize: [52,52], iconAnchor: [26,26], popupAnchor: [0,-32]
+});
+var issMarker = L.marker([0,0], { icon: issIcon }).addTo(map);
+issMarker.bindPopup("Loading...", { maxWidth: 280, minWidth: 280, closeButton: false });
 
-  let followISS = true;
-  let showTrack = true;
-  let showPredict = true;
+/* Coord display: only when map is visible */
+var coordCtrl = L.control({ position: "bottomleft" });
+coordCtrl.onAdd = function() {
+  var div = L.DomUtil.create("div");
+  div.id = "coord-box";
+  div.style.cssText = "background:rgba(26,26,46,.82);color:#fff;padding:6px 12px;border-radius:8px;" +
+    "font-size:.76rem;font-family:'Courier New',monospace;font-weight:600;" +
+    "border:1px solid rgba(26,115,232,.4);pointer-events:none;display:none;";
+  div.textContent = "Move cursor over map";
+  return div;
+};
+coordCtrl.addTo(map);
 
-  // Ground track (past 200 positions) - bright cyan
-  let trackCoords = [];
-  let trackLine = L.polyline([], {
-    color: "#00d4ff",
-    weight: 3,
-    opacity: 0.8,
-    smoothFactor: 1
-  }).addTo(map);
+var mapEl = document.getElementById("map");
+var mapObs = new IntersectionObserver(function(entries) {
+  var b = document.getElementById("coord-box");
+  if (b) b.style.display = entries[0].isIntersecting ? "block" : "none";
+}, { threshold: 0.1 });
+mapObs.observe(mapEl);
 
-  // Predicted trajectory - yellow/orange
-  let predictLine = L.polyline([], {
-    color: "#ffeb3b",
-    weight: 2,
-    opacity: 0.7,
-    dashArray: "8,6"
-  }).addTo(map);
+map.on("mousemove", function(e) {
+  var b = document.getElementById("coord-box");
+  if (b) b.textContent = String.fromCodePoint(128205) + " " + e.latlng.lat.toFixed(4) + "°, " + e.latlng.lng.toFixed(4) + "°";
+});
+map.on("mouseout", function() {
+  var b = document.getElementById("coord-box");
+  if (b) b.textContent = "Move cursor over map";
+});
 
-  let lastLat = null, lastLon = null;
+var showTrack = true, showPredict = true, followISS = true;
+var trackCoords = [], lastLat = null, lastLon = null;
+var trackLine   = L.polyline([], { color: "#00d4ff", weight: 2.5, opacity: 0.85 }).addTo(map);
+var predictLine = L.polyline([], { color: "#ffd740", weight: 2, opacity: 0.75, dashArray: "8,6" }).addTo(map);
 
-  function toggleLayer(type) {
-    if (type === "track") {
-      showTrack = !showTrack;
-      const btn = document.getElementById("btn-track");
-      btn.classList.toggle("active", showTrack);
-      btn.setAttribute("aria-pressed", showTrack);
-      showTrack ? trackLine.addTo(map) : map.removeLayer(trackLine);
-    } else if (type === "predict") {
-      showPredict = !showPredict;
-      const btn = document.getElementById("btn-predict");
-      btn.classList.toggle("active", showPredict);
-      btn.setAttribute("aria-pressed", showPredict);
-      showPredict ? predictLine.addTo(map) : map.removeLayer(predictLine);
-    }
+function toggleLayer(type) {
+  if (type === "track") {
+    showTrack = !showTrack;
+    var b = document.getElementById("btn-track");
+    b.classList.toggle("active", showTrack); b.setAttribute("aria-pressed", showTrack);
+    showTrack ? trackLine.addTo(map) : map.removeLayer(trackLine);
+  } else {
+    showPredict = !showPredict;
+    var b2 = document.getElementById("btn-predict");
+    b2.classList.toggle("active", showPredict); b2.setAttribute("aria-pressed", showPredict);
+    showPredict ? predictLine.addTo(map) : map.removeLayer(predictLine);
   }
+}
 
-  function toggleCenter() {
-    followISS = !followISS;
-    const btn = document.getElementById("btn-center");
-    btn.classList.toggle("active", followISS);
-    btn.setAttribute("aria-pressed", followISS);
+function toggleCenter() {
+  followISS = !followISS;
+  var b = document.getElementById("btn-center");
+  b.classList.toggle("active", followISS); b.setAttribute("aria-pressed", followISS);
+  if (followISS && lastLat !== null) {
+    map.flyTo([lastLat, lastLon], map.getZoom(), { animate: true, duration: 0.8 });
+    showToast("Following ISS", "Map will auto-center on ISS position", "success");
+  } else {
+    showToast("Free Navigation", "You can now pan the map freely", "success");
   }
+}
 
-  async function fetchISS() {
-    try {
-      const res = await fetch(API_URL);
-      if (!res.ok) throw new Error("API error");
-      const d = await res.json();
+function showToast(title, message, type) {
+  type = type || "success";
+  var t = document.getElementById("toast");
+  document.getElementById("toastIcon").textContent    = type === "success" ? "&#10003;" : "&#9888;";
+  document.getElementById("toastTitle").textContent   = title;
+  document.getElementById("toastMessage").textContent = message;
+  t.className = "toast " + type + " show";
+  clearTimeout(t._x);
+  t._x = setTimeout(function() { t.classList.remove("show"); }, 3000);
+}
 
-      const lat = parseFloat(d.latitude);
-      const lon = parseFloat(d.longitude);
-      const alt = parseFloat(d.altitude).toFixed(1);
-      const vel = parseFloat(d.velocity).toFixed(1);
-      const vis = d.visibility || "unknown";
+function updateOrbitProgress() {
+  var now = Date.now();
+  var mid = new Date(); mid.setHours(0,0,0,0);
+  var msFromMid = now - mid.getTime();
+  var done      = Math.floor(msFromMid / ORBIT_MS);
+  var elapsed   = msFromMid - done * ORBIT_MS;
+  var pct       = Math.min(Math.floor((elapsed / ORBIT_MS) * 100), 99);
+  var left      = Math.ceil((ORBIT_MS - elapsed) / 60000);
+  document.getElementById("progressCircle").style.strokeDashoffset = CIRC - (pct/100)*CIRC;
+  document.getElementById("orbitPercent").textContent = pct + "%";
+  document.getElementById("orbitCount").textContent   = done;
+  document.getElementById("timeLeft").textContent     = left;
+}
 
-      // Update marker
-      issMarker.setLatLng([lat, lon]);
-      issMarker.setPopupContent(`
-        <div style="text-align:center;padding:8px;font-family:Arial;">
-          <strong style="font-size:16px;">🛰️ International Space Station</strong><br><br>
-          <strong>Latitude:</strong> ${lat.toFixed(4)}°<br>
-          <strong>Longitude:</strong> ${lon.toFixed(4)}°<br>
-          <strong>Altitude:</strong> ${alt} km<br>
-          <strong>Velocity:</strong> ${parseFloat(vel).toLocaleString()} km/h<br>
-          <strong>Visibility:</strong> ${vis}
-        </div>
-      `);
+function buildPopup(lat, lon, alt, vel, vis) {
+  var day  = vis.toLowerCase() === "daylight";
+  var vc   = day ? "#43a047" : "#1a73e8";
+  var vi   = day ? String.fromCodePoint(9728,65039) : String.fromCodePoint(127769);
+  var vl   = vis.charAt(0).toUpperCase() + vis.slice(1);
+  return '<div class="popup-inner">' +
+    '<div class="popup-header"><div class="p-icon">' + String.fromCodePoint(128752,65039) + '</div>' +
+    '<div><div class="p-title">International Space Station</div><div class="p-sub">Live Real-Time Telemetry</div></div></div>' +
+    '<div class="popup-stats">' +
+    '<div class="popup-stat"><div class="p-lbl">Latitude</div><div class="p-val">' + lat.toFixed(4) + '°</div></div>' +
+    '<div class="popup-stat"><div class="p-lbl">Longitude</div><div class="p-val">' + lon.toFixed(4) + '°</div></div>' +
+    '<div class="popup-stat"><div class="p-lbl">Altitude</div><div class="p-val">' + alt + ' km</div></div>' +
+    '<div class="popup-stat"><div class="p-lbl">Speed</div><div class="p-val">' + parseFloat(vel).toLocaleString() + ' km/h</div></div>' +
+    '</div>' +
+    '<div class="popup-vis"><div class="vis-dot" style="background:' + vc + ';"></div>' + vi + ' Currently in <strong>' + vl + '</strong></div>' +
+    '<div class="popup-footer">Updates every 5 seconds via WhereTheISS.at</div></div>';
+}
 
-      // Update info panel
-      document.getElementById("lat").textContent = lat.toFixed(4) + "°";
-      document.getElementById("lon").textContent = lon.toFixed(4) + "°";
-      document.getElementById("alt").textContent = alt + " km";
-      document.getElementById("vel").textContent = parseFloat(vel).toLocaleString() + " km/h";
-      document.getElementById("vis").textContent = vis.charAt(0).toUpperCase() + vis.slice(1);
-      document.getElementById("updated").textContent = new Date().toLocaleTimeString();
+async function fetchISS() {
+  try {
+    var r = await fetch(API_URL);
+    if (!r.ok) throw new Error("err");
+    var d = await r.json();
+    var lat = parseFloat(d.latitude), lon = parseFloat(d.longitude);
+    var alt = parseFloat(d.altitude).toFixed(1), vel = parseFloat(d.velocity).toFixed(1);
+    var vis = d.visibility || "unknown";
 
-      // Ground track
-      trackCoords.push([lat, lon]);
-      if (trackCoords.length > 200) trackCoords.shift();
-      trackLine.setLatLngs(trackCoords);
+    issMarker.setLatLng([lat, lon]);
+    issMarker.setPopupContent(buildPopup(lat, lon, alt, vel, vis));
 
-      // Predicted trajectory (simple linear projection)
-      if (lastLat !== null) {
-        const dLat = lat - lastLat;
-        const dLon = lon - lastLon;
-        const predicted = [[lat, lon]];
-        for (let i = 1; i <= 15; i++) {
-          predicted.push([lat + dLat * i * 5, lon + dLon * i * 5]);
-        }
-        predictLine.setLatLngs(predicted);
-      }
+    ["lat","lon","alt","vel","vis"].forEach(function(id) {
+      var el = document.getElementById(id);
+      el.classList.remove("updating"); void el.offsetWidth; el.classList.add("updating");
+    });
+    document.getElementById("lat").textContent     = lat.toFixed(4) + "°";
+    document.getElementById("lon").textContent     = lon.toFixed(4) + "°";
+    document.getElementById("alt").textContent     = alt + " km";
+    document.getElementById("vel").textContent     = parseFloat(vel).toLocaleString() + " km/h";
+    document.getElementById("vis").textContent     = vis.charAt(0).toUpperCase() + vis.slice(1);
+    document.getElementById("updated").textContent = new Date().toLocaleTimeString();
+    setTimeout(function() {
+      ["lat","lon","alt","vel","vis"].forEach(function(id) { document.getElementById(id).classList.remove("updating"); });
+    }, 400);
 
-      lastLat = lat;
-      lastLon = lon;
+    trackCoords.push([lat, lon]);
+    if (trackCoords.length > 250) trackCoords.shift();
+    trackLine.setLatLngs(trackCoords);
 
-      // Follow ISS
-      if (followISS) map.setView([lat, lon], map.getZoom());
-
-      // Hide error
-      document.getElementById("error-banner").style.display = "none";
-
-    } catch (err) {
-      console.error("ISS fetch error:", err);
-      document.getElementById("error-banner").style.display = "block";
+    if (lastLat !== null) {
+      var dLat = lat - lastLat, dLon = lon - lastLon;
+      var pr = [[lat, lon]];
+      for (var i = 1; i <= 18; i++) pr.push([lat + dLat*i*5, lon + dLon*i*5]);
+      predictLine.setLatLngs(pr);
     }
+    lastLat = lat; lastLon = lon;
+    if (followISS) map.flyTo([lat, lon], map.getZoom(), { animate: true, duration: 0.6 });
+    document.getElementById("error-banner").style.display = "none";
+  } catch(e) {
+    console.warn("ISS fetch error:", e);
+    document.getElementById("error-banner").style.display = "block";
   }
+}
 
-  async function fetchCrew() {
-    const list = document.getElementById("crew-list");
-    try {
-      const res = await fetch(CREW_URL);
-      if (!res.ok) throw new Error("Network response was not ok");
-      const data = await res.json();
+function getAstronautUrl(name, craft) {
+  var n = name.toLowerCase(), cr = (craft || "").toLowerCase();
+  var nasa = ["williams","wilmore","morgan","vande hei","cassidy","meir","hathaway","adenot","glover","hopkins","walker","rubio","barnard","kim","hague","pettit","mann"];
+  var esa  = ["peake","pesquet","gerst","cristoforetti","mogensen","hagseth"];
+  var jaxa = ["furukawa","wakata","hoshide","onishi","yui","kanai","noguchi"];
+  var ros  = ["prokopyev","kud-sverchkov","mikayev","fedyaev","borisov","petelin","grebenkin","ovchinin","skripochka","ivanishin","novitskiy","dubrov","misurkin","artemyev"];
+  var csa  = ["payette","hadfield","saint-jacques"];
+  var i, last;
+  for (i=0;i<nasa.length;i++) { if (n.indexOf(nasa[i])!==-1) { last=name.split(" ").pop().toLowerCase().replace(/[^a-z]/g,""); return "https://www.nasa.gov/astronauts/biographies/"+last+"/"; } }
+  for (i=0;i<esa.length;i++)  { if (n.indexOf(esa[i])!==-1)  { last=name.split(" ").pop().toLowerCase().replace(/[^a-z-]/g,""); return "https://www.esa.int/Science_Exploration/Human_and_Robotic_Exploration/Astronauts/"+last; } }
+  for (i=0;i<jaxa.length;i++) { if (n.indexOf(jaxa[i])!==-1) { last=name.split(" ").pop().toLowerCase().replace(/[^a-z]/g,""); return "https://iss.jaxa.jp/en/astro/"+last+"/"; } }
+  for (i=0;i<ros.length;i++)  { if (n.indexOf(ros[i])!==-1)  { return "https://en.wikipedia.org/wiki/"+encodeURIComponent(name.replace(/ /g,"_")); } }
+  for (i=0;i<csa.length;i++)  { if (n.indexOf(csa[i])!==-1)  { last=name.split(" ").pop().toLowerCase().replace(/[^a-z]/g,""); return "https://www.asc-csa.gc.ca/eng/astronauts/canadian/active/"+last+".asp"; } }
+  if (cr.indexOf("tiangong")!==-1||cr.indexOf("shenzhou")!==-1||/\b(lu|fei|zhang|hong|tang|zhai|nie|liu|yang|wang|chen)\b/.test(n))
+    return "https://en.wikipedia.org/wiki/"+encodeURIComponent(name.replace(/ /g,"_"));
+  return "https://en.wikipedia.org/wiki/"+encodeURIComponent(name.replace(/ /g,"_"));
+}
 
-      // The new API provides a "people" array directly
-      const crew = data.people || [];
-
-      if (crew.length === 0) {
-        list.innerHTML = '<p style="color:#9ca3af;font-size:0.85rem;">No ISS crew data found.</p>';
-        return;
-      }
-
-      list.innerHTML = crew.map(p => `
-        <div class="astronaut-item" role="listitem">
-          <div class="astronaut-avatar" aria-hidden="true">${p.name.charAt(0)}</div>
-          <div>
-            <div class="astronaut-name">${p.name}</div>
-            <div class="astronaut-craft">${p.craft || 'ISS'}</div>
-          </div>
-        </div>
-      `).join("");
-
-    } catch (e) {
-      console.error("Crew Error:", e);
-      // Fallback display if the API fails
-      list.innerHTML = `
-        <div style="padding:10px; border:1px solid #fee2e2; border-radius:8px; background:#fef2f2;">
-          <p style="color:#b91c1c; font-size:0.8rem; font-weight:bold;">Offline Mode</p>
-          <p style="color:#7f1d1d; font-size:0.75rem;">Showing last known Expedition 74 crew: Williams, Meir, Hathaway...</p>
-        </div>`;
-    }
+async function fetchCrew() {
+  var container = document.getElementById("crew-list");
+  try {
+    var r = await fetch(CREW_URL);
+    if (!r.ok) throw new Error("err");
+    var data = await r.json();
+    var all  = data.people || [];
+    var iss  = all.filter(function(p) { var c=(p.craft||"").toLowerCase(); return c.indexOf("iss")!==-1||c.indexOf("international")!==-1; });
+    var crew = iss.length > 0 ? iss : all;
+    if (!crew.length) { container.innerHTML='<p style="color:#9ca3af;font-size:.84rem;">No crew data available.</p>'; return; }
+    container.innerHTML = crew.map(function(m) {
+      var name = m.name||"Unknown", craft = m.craft||"";
+      var ini  = name.split(" ").map(function(w){return w[0];}).join("").substring(0,2).toUpperCase();
+      var url  = getAstronautUrl(name, craft);
+      return '<a href="'+url+'" target="_blank" rel="noopener" class="crew-pill" role="listitem" title="View '+name+' biography">' +
+        '<div class="crew-avatar">'+ini+'</div><div class="crew-name">'+name+'</div></a>';
+    }).join("");
+  } catch(e) {
+    console.warn("Crew error:", e);
+    container.innerHTML='<p style="color:#9ca3af;font-size:.84rem;">Could not load crew data.</p>';
   }
+}
 
-  // Initialize
-  fetchISS();
-  fetchCrew();
-  setInterval(fetchISS, INTERVAL);
-  setInterval(fetchCrew, 5 * 60 * 1000); // Every 3 minutes
+updateOrbitProgress();
+fetchISS();
+fetchCrew();
+setInterval(fetchISS, INTERVAL);
+setInterval(updateOrbitProgress, 1000);
 </script>
 </body>
 </html>
