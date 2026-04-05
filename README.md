@@ -26,9 +26,7 @@ Built with HTML, CSS, and JavaScript. Uses Leaflet.js for the interactive map, W
 
 ## How to Use
 
-Just open the live link above in any web browser. The tracker updates every 5 seconds automatically. Click on the ISS marker to see detailed information in a popup.
-
-If you want to run it locally, download the HTML file and open it in your browser. That's it, no installation needed.
+Just open the live link above in any web browser. The tracker updates every 3 seconds automatically. Click on the ISS marker to see detailed information in a popup.
 
 ## UN SDG Alignment
 
@@ -44,7 +42,6 @@ This project supports four UN Sustainable Development Goals:
 
 ## Academic Context
 
-**Course:** WebGIS Internal Assessment  
 **Program:** M.Sc. Geoinformatics (2nd Semester)  
 **Institution:** Bharati Vidyapeeth's Institute of Environment Education and Research, Pune  
 **Student:** Vaibhav Shivaji Nagare
@@ -68,8 +65,8 @@ MIT License
 Vaibhav Shivaji Nagare  
 Email: vaibhavnagare20@gmail.com  
 GitHub: [@vaibhavnagare-gis](https://github.com/vaibhavnagare-gis)  
-Bharati Vidyapeeth's Institute of Environment Education and Research, Pune
+LinkedIn: [@vaibhav-nagare-gis](https://www.linkedin.com/in/vaibhav-nagare-gis/)
 
 ## Acknowledgments
 
-Thanks to NASA for ISS data and mission information. The WhereTheISS.at team for their reliable real-time position API. Special thanks to corquaid for maintaining the ISS People in Space API with current Expedition 74 crew data. The Leaflet.js community for excellent mapping tools. Esri for providing satellite imagery tiles. My professors at Bharati Vidyapeeth for guidance on this project.
+Thanks to NASA for ISS data and mission information. The WhereTheISS.at team for their reliable real-time position API. Special thanks to corquaid for maintaining the ISS People in Space API with current Expedition 74 crew data. The Leaflet.js community for excellent mapping tools. Esri for providing satellite imagery tiles. My professors at Bharati Vidyapeeth for valuable feedback on this project.
