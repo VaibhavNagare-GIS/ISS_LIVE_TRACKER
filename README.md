@@ -58,7 +58,7 @@ The crew API sometimes doesn't load due to server timeouts. The trajectory predi
 
 ## License
 
-MIT License
+CC0 1.0 Universal
 
 ## Contact
 
@@ -69,4 +69,4 @@ LinkedIn: [@vaibhav-nagare-gis](https://www.linkedin.com/in/vaibhav-nagare-gis/)
 
 ## Acknowledgments
 
-Thanks to NASA for ISS data and mission information. The WhereTheISS.at team for their reliable real-time position API. Special thanks to corquaid for maintaining the ISS People in Space API with current Expedition 74 crew data. The Leaflet.js community for excellent mapping tools. Esri for providing satellite imagery tiles. My professors at Bharati Vidyapeeth for valuable feedback on this project.
+Thanks to NASA for ISS data and mission information. The WhereTheISS.at team for their reliable real-time position API. Special thanks to corquaid for maintaining the ISS People in Space API with current Expedition 74 crew data. The Leaflet.js community for excellent mapping tools. Esri for providing satellite imagery tiles. My professors at Bharati Vidyapeeth Institute of Environment Education and Research, Pune for valuable feedback on this project.
