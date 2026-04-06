@@ -24,6 +24,10 @@ You can toggle the ground track, trajectory line, and following mode using the b
 
 Built with HTML, CSS, and JavaScript. Uses Leaflet.js for the interactive map, WhereTheISS.at API for real-time position data, and Open Notify API for crew information. The satellite imagery comes from Esri.
 
+## Future Aspects
+
+Working on the 3D Globe option to integreat in the tracker.
+
 ## How to Use
 
 Just open the live link above in any web browser. The tracker updates every 3 seconds automatically. Click on the ISS marker to see detailed information in a popup.
