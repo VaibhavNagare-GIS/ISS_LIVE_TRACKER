@@ -290,7 +290,7 @@
           <div class="toggle-group" role="group" aria-label="Map controls">
             <button class="toggle-btn active" id="btn-track"   onclick="toggleLayer('track')"   aria-pressed="true">🛤️ Ground Track</button>
             <button class="toggle-btn active" id="btn-predict" onclick="toggleLayer('predict')" aria-pressed="true">🎯 Trajectory</button>
-            <button class="toggle-btn active" id="btn-center"  onclick="toggleCenter()"          aria-pressed="true">📍 Follow ISS</button>
+            <button class="toggle-btn"        id="btn-center"  onclick="toggleCenter()"          aria-pressed="false">📍 Follow ISS</button>
             <button class="toggle-btn"        id="btn-3d"      onclick="toggle3D()"              aria-pressed="false">🌍 3D Globe</button>
           </div>
         </div>
@@ -450,8 +450,9 @@ var ORBIT_MS = 92 * 60 * 1000;
 var CIRC     = 2 * Math.PI * 58;
 
 var lastLat = null, lastLon = null, lastAlt = 408;
-var showTrack = true, showPredict = true, followISS = true;
+var showTrack = true, showPredict = true, followISS = false;
 var is3D = false;
+var firstLoad = true;
 
 /* ===================================================================
    LEAFLET MAP
@@ -553,6 +554,18 @@ function buildPopup(lat, lon, alt, vel, vis) {
     '<div class="popup-footer">Updates every 3 s · WhereTheISS.at</div></div>';
 }
 
+/* Anti-meridian helpers */
+function normLon(l) { return ((l % 360) + 540) % 360 - 180; }
+function splitAtAntimeridian(coords) {
+  if (coords.length < 2) return [coords.slice()];
+  var s = [[coords[0]]];
+  for (var i = 1; i < coords.length; i++) {
+    if (Math.abs(coords[i][1] - coords[i-1][1]) > 180) s.push([]);
+    s[s.length-1].push(coords[i]);
+  }
+  return s;
+}
+
 function updateOrbitProgress() {
   var now = Date.now();
   var mid = new Date(); mid.setHours(0,0,0,0);
@@ -603,20 +616,27 @@ async function fetchISS() {
     issMarker.setPopupContent(buildPopup(lat, lon, alt, vel, vis));
     trackCoords.push([lat, lon]);
     if (trackCoords.length > 250) trackCoords.shift();
-    trackLine.setLatLngs(trackCoords);
+    trackLine.setLatLngs(splitAtAntimeridian(trackCoords));
     if (lastLat !== null) {
       var dLat = lat - lastLat, dLon = lon - lastLon;
       var pr = [[lat, lon]];
-      for (var i = 1; i <= 18; i++) pr.push([lat + dLat*i*5, lon + dLon*i*5]);
-      predictLine.setLatLngs(pr);
+      for (var i = 1; i <= 18; i++) pr.push([lat + dLat*i*5, normLon(lon + dLon*i*5)]);
+      predictLine.setLatLngs(splitAtAntimeridian(pr));
     }
-    if (!is3D && followISS && lastLat !== null)
+    /* One-shot center on first load so ISS is visible immediately */
+    if (firstLoad) {
+      map.setView([lat, lon], 3, { animate:false });
+      firstLoad = false;
+    } else if (!is3D && followISS && lastLat !== null) {
       map.setView([lat, lon], map.getZoom(), { animate:false, duration:0 });
+    }
 
+    var dLat3D = (lastLat !== null) ? (lat - lastLat) : 0;
+    var dLon3D = (lastLat !== null) ? (lon - lastLon) : 0;
     lastLat = lat; lastLon = lon;
 
     /* Sync 3D globe if active */
-    if (is3D && cesiumReady) cesium3DUpdate(lat, lon, parseFloat(alt));
+    if (is3D && cesiumReady) cesium3DUpdate(lat, lon, parseFloat(alt), dLat3D, dLon3D);
 
     document.getElementById("error-banner").style.display = "none";
   } catch(e) {
@@ -662,6 +682,8 @@ var cesiumViewer = null;
 var cesiumISS    = null;   /* ISS billboard entity */
 var cesiumOrbit  = null;   /* ground track polyline entity */
 var cesium3DTrack = [];    /* [{lon,lat}] */
+var cesiumPredict = null;  /* prediction polyline entity */
+var cesium3DPredPts = [];  /* prediction positions for Cesium */
 
 function cesium3DInit() {
   /* Completely suppress Ion — no token needed because we use only
@@ -671,15 +693,9 @@ function cesium3DInit() {
      but we avoid ALL Ion assets below so it won't hit any quota */
 
   cesiumViewer = new Cesium.Viewer("globe", {
-    /* ── Imagery: free Esri World Imagery tiles (same as Leaflet) ── */
-    imageryProvider: new Cesium.UrlTemplateImageryProvider({
-      url : "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      credit: "Tiles © Esri",
-      maximumLevel: 18
-    }),
-    /* ── Terrain: flat ellipsoid — no Ion, no token ── */
+    /* Let Cesium use its default Ion-powered Bing Maps Aerial imagery
+       — gives photorealistic Earth like Google Earth / Esri SatelliteXplorer */
     terrainProvider: new Cesium.EllipsoidTerrainProvider(),
-    /* ── Disable all Ion-dependent widgets ── */
     baseLayerPicker    : false,
     geocoder           : false,
     homeButton         : false,
@@ -776,6 +792,19 @@ function cesium3DInit() {
     }
   });
 
+  /* ── Prediction polyline — gold dashed ── */
+  cesiumPredict = cesiumViewer.entities.add({
+    polyline: {
+      positions: new Cesium.CallbackProperty(function() { return cesium3DPredPts; }, false),
+      width: 2,
+      material: new Cesium.PolylineDashMaterialProperty({
+        color: Cesium.Color.fromCssColorString("#ffd740").withAlpha(0.75),
+        dashLength: 16
+      }),
+      clampToGround: false
+    }
+  });
+
   /* Initial camera */
   cesiumViewer.camera.setView({
     destination: (lastLat !== null)
@@ -787,16 +816,24 @@ function cesium3DInit() {
   cesiumReady = true;
 }
 
-function cesium3DUpdate(lat, lon, altKm) {
+function cesium3DUpdate(lat, lon, altKm, dLat, dLon) {
   if (!cesiumISS || !cesiumViewer) return;
+  dLat = dLat || 0; dLon = dLon || 0;
   var pos = Cesium.Cartesian3.fromDegrees(lon, lat, altKm * 1000);
   cesiumISS.position = pos;
   cesium3DTrack.push({ lat:lat, lon:lon });
   if (cesium3DTrack.length > 250) cesium3DTrack.shift();
+  /* Update prediction polyline */
+  if (cesiumPredict && (dLat !== 0 || dLon !== 0)) {
+    cesium3DPredPts = [Cesium.Cartesian3.fromDegrees(lon, lat, 10000)];
+    for (var i = 1; i <= 18; i++)
+      cesium3DPredPts.push(Cesium.Cartesian3.fromDegrees(normLon(lon + dLon*i*5), lat + dLat*i*5, 10000));
+  }
   if (followISS) {
-    cesiumViewer.camera.setView({
+    cesiumViewer.camera.flyTo({
       destination: Cesium.Cartesian3.fromDegrees(lon, lat, altKm*1000 + 2200000),
-      orientation: { heading:0, pitch:-Cesium.Math.PI_OVER_FOUR, roll:0 }
+      orientation: { heading:0, pitch:-Cesium.Math.PI_OVER_FOUR, roll:0 },
+      duration: 2.5
     });
   }
 }
@@ -834,7 +871,6 @@ function toggle3D() {
       script.src  = "https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/Cesium.js";
       script.onload = function() {
         try {
-          window.CESIUM_BASE_URL = "https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/";
           cesium3DInit();
           document.getElementById("globe-loading").classList.remove("show");
           if (lastLat !== null) cesium3DUpdate(lastLat, lastLon, lastAlt);
@@ -864,6 +900,7 @@ function toggle3D() {
         document.getElementById("globe-loading").classList.remove("show");
         showToast("Network Error", "Could not load Cesium.js", "error");
       };
+      window.CESIUM_BASE_URL = "https://cesium.com/downloads/cesiumjs/releases/1.114/Build/Cesium/";
       document.head.appendChild(script);
     }
 
