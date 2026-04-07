@@ -686,15 +686,11 @@ var cesiumPredict = null;  /* prediction polyline entity */
 var cesium3DPredPts = [];  /* prediction positions for Cesium */
 
 function cesium3DInit() {
-  /* Completely suppress Ion — no token needed because we use only
-     UrlTemplateImageryProvider (same tiles as our Leaflet map) */
-  Cesium.Ion.defaultAccessToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJqdGkiOiJlYWE1OWIxNy1mMWZiLTQzYjYtYTQ0OS1kMWFjYmFkNjc4ODEiLCJpZCI6OTYxOSwic2NvcGVzIjpbImFzciIsImdjIl0sImlhdCI6MTU2Mjk1NjQzMX0.b8_QSaHGnDHMXbaTqiwJQyxhEKsQzFhYqYC42vP0_EU";
-  /* ^ This is Cesium's own public demo token — safe to use,
-     but we avoid ALL Ion assets below so it won't hit any quota */
+  /* ── Suppress Ion completely — token-free operation ── */
+  Cesium.Ion.defaultAccessToken = "";
 
   cesiumViewer = new Cesium.Viewer("globe", {
-    /* Let Cesium use its default Ion-powered Bing Maps Aerial imagery
-       — gives photorealistic Earth like Google Earth / Esri SatelliteXplorer */
+    imageryProvider: false,   /* no default imagery — we load our own below */
     terrainProvider: new Cesium.EllipsoidTerrainProvider(),
     baseLayerPicker    : false,
     geocoder           : false,
@@ -706,21 +702,24 @@ function cesium3DInit() {
     fullscreenButton   : false,
     selectionIndicator : false,
     infoBox            : false,
-    shadows            : false
+    shadows            : false,
+    requestRenderMode  : false,
+    contextOptions     : { webgl:{ alpha:false } }
   });
 
-  /* ── Visual atmosphere settings to match dark space palette ── */
+  /* ── Load satellite imagery (async, with fallbacks) ── */
+  _loadGlobeImagery();
+
+  /* ── Visual settings ── */
   var scene = cesiumViewer.scene;
-  scene.backgroundColor          = Cesium.Color.fromCssColorString("#060d1a");
-  scene.skyBox.show              = true;
-  scene.sun.show                 = true;
-  scene.moon.show                = false;
-  scene.skyAtmosphere.show       = true;
-  scene.globe.enableLighting     = true;
-  scene.globe.atmosphereLightIntensity = 20.0;
-  scene.globe.atmosphereHueShift       = 0.0;
-  scene.globe.atmosphereSaturationShift= 0.1;
-  scene.globe.atmosphereBrightnessShift= 0.05;
+  scene.backgroundColor    = Cesium.Color.fromCssColorString("#060d1a");
+  scene.skyBox.show        = true;
+  scene.sun.show           = true;
+  scene.moon.show          = false;
+  scene.skyAtmosphere.show = true;
+  scene.globe.enableLighting         = false; /* always bright — no dark side */
+  scene.globe.showGroundAtmosphere   = true;
+  scene.globe.baseColor              = Cesium.Color.fromCssColorString("#1a3a5c");
 
   /* Remove Cesium credit display */
   if (cesiumViewer.bottomContainer) cesiumViewer.bottomContainer.style.display = "none";
@@ -814,6 +813,43 @@ function cesium3DInit() {
   });
 
   cesiumReady = true;
+}
+
+/* ── Async imagery loader with 3 fallback strategies ── */
+async function _loadGlobeImagery() {
+  if (!cesiumViewer) return;
+
+  /* Strategy 1: Esri ArcGIS MapServer (async API — Cesium 1.104+) */
+  try {
+    if (Cesium.ArcGisMapServerImageryProvider && Cesium.ArcGisMapServerImageryProvider.fromUrl) {
+      var esri = await Cesium.ArcGisMapServerImageryProvider.fromUrl(
+        "https://services.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer"
+      );
+      cesiumViewer.imageryLayers.addImageryProvider(esri);
+      console.log("Globe imagery: Esri ArcGIS (async)");
+      return;
+    }
+  } catch(e) { console.warn("Esri async failed:", e); }
+
+  /* Strategy 2: URL template tiles (sync constructor) */
+  try {
+    var tpl = new Cesium.UrlTemplateImageryProvider({
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      maximumLevel: 18,
+      credit: "Esri"
+    });
+    cesiumViewer.imageryLayers.addImageryProvider(tpl);
+    console.log("Globe imagery: Esri URL template (sync)");
+    return;
+  } catch(e) { console.warn("Esri URL template failed:", e); }
+
+  /* Strategy 3: OpenStreetMap (guaranteed to work, not satellite but shows Earth) */
+  try {
+    cesiumViewer.imageryLayers.addImageryProvider(
+      new Cesium.OpenStreetMapImageryProvider({ url: "https://tile.openstreetmap.org/" })
+    );
+    console.log("Globe imagery: OpenStreetMap fallback");
+  } catch(e) { console.error("All imagery providers failed:", e); }
 }
 
 function cesium3DUpdate(lat, lon, altKm, dLat, dLon) {
