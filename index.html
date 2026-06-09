@@ -226,24 +226,24 @@
 
 <div class="facts-banner" aria-hidden="true">
   <div class="facts-scroll">
-    <span class="fact-item-banner">🚀 <strong>First Module:</strong> Zarya, launched 20 Nov 1998</span>
-    <span class="fact-item-banner">⏱️ <strong>Orbit Period:</strong> approx. 92 minutes</span>
-    <span class="fact-item-banner">🌍 <strong>Orbits per Day:</strong> approx. 15.5</span>
-    <span class="fact-item-banner">📏 <strong>Size:</strong> 109 m × 73 m — football field scale</span>
-    <span class="fact-item-banner">⚡ <strong>Solar Power:</strong> 120 kW</span>
-    <span class="fact-item-banner">👥 <strong>Partners:</strong> NASA · ESA · JAXA · CSA · Roscosmos</span>
-    <span class="fact-item-banner">🏆 <strong>Mass:</strong> approx. 420,000 kg</span>
-    <span class="fact-item-banner">🌡️ <strong>External Temp:</strong> −157°C to +121°C</span>
-    <span class="fact-item-banner">🔬 <strong>Experiments:</strong> 3,000+ science studies conducted</span>
-    <span class="fact-item-banner">🚀 <strong>First Module:</strong> Zarya, launched 20 Nov 1998</span>
-    <span class="fact-item-banner">⏱️ <strong>Orbit Period:</strong> approx. 92 minutes</span>
-    <span class="fact-item-banner">🌍 <strong>Orbits per Day:</strong> approx. 15.5</span>
-    <span class="fact-item-banner">📏 <strong>Size:</strong> 109 m × 73 m — football field scale</span>
-    <span class="fact-item-banner">⚡ <strong>Solar Power:</strong> 120 kW</span>
-    <span class="fact-item-banner">👥 <strong>Partners:</strong> NASA · ESA · JAXA · CSA · Roscosmos</span>
-    <span class="fact-item-banner">🏆 <strong>Mass:</strong> approx. 420,000 kg</span>
-    <span class="fact-item-banner">🌡️ <strong>External Temp:</strong> −157°C to +121°C</span>
-    <span class="fact-item-banner">🔬 <strong>Experiments:</strong> 3,000+ science studies conducted</span>
+    <span class="fact-item-banner"> <strong>First Module:</strong> Zarya, launched 20 Nov 1998</span>
+    <span class="fact-item-banner"> <strong>Orbit Period:</strong> approx. 92 minutes</span>
+    <span class="fact-item-banner"> <strong>Orbits per Day:</strong> approx. 15.5</span>
+    <span class="fact-item-banner"> <strong>Size:</strong> 109 m × 73 m — football field scale</span>
+    <span class="fact-item-banner"> <strong>Solar Power:</strong> 120 kW</span>
+    <span class="fact-item-banner"> <strong>Partners:</strong> NASA · ESA · JAXA · CSA · Roscosmos</span>
+    <span class="fact-item-banner"> <strong>Mass:</strong> approx. 420,000 kg</span>
+    <span class="fact-item-banner"> <strong>External Temp:</strong> −157°C to +121°C</span>
+    <span class="fact-item-banner"> <strong>Experiments:</strong> 3,000+ science studies conducted</span>
+    <span class="fact-item-banner"> <strong>First Module:</strong> Zarya, launched 20 Nov 1998</span>
+    <span class="fact-item-banner"> <strong>Orbit Period:</strong> approx. 92 minutes</span>
+    <span class="fact-item-banner"> <strong>Orbits per Day:</strong> approx. 15.5</span>
+    <span class="fact-item-banner"> <strong>Size:</strong> 109 m × 73 m — football field scale</span>
+    <span class="fact-item-banner"> <strong>Solar Power:</strong> 120 kW</span>
+    <span class="fact-item-banner"> <strong>Partners:</strong> NASA · ESA · JAXA · CSA · Roscosmos</span>
+    <span class="fact-item-banner"> <strong>Mass:</strong> approx. 420,000 kg</span>
+    <span class="fact-item-banner"> <strong>External Temp:</strong> −157°C to +121°C</span>
+    <span class="fact-item-banner"> <strong>Experiments:</strong> 3,000+ science studies conducted</span>
   </div>
 </div>
 
@@ -383,7 +383,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 /* ===================================================================
-   CREW DATABASE — verified bio URLs (no Wikipedia fallbacks for named crew)
+   CREW DATABASE — verified bio URLs
 =================================================================== */
 var CREW_DB = [
   { match:["kud-sverchkov","kud sverchkov"], flag:"ru", country:"Russia",
@@ -690,7 +690,7 @@ function cesium3DInit() {
   Cesium.Ion.defaultAccessToken = "";
 
   cesiumViewer = new Cesium.Viewer("globe", {
-    imageryProvider: false,   /* no default imagery — we load our own below */
+    imageryProvider: false, 
     terrainProvider: new Cesium.EllipsoidTerrainProvider(),
     baseLayerPicker    : false,
     geocoder           : false,
