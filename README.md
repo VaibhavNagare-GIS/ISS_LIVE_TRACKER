@@ -62,7 +62,7 @@ The crew API sometimes doesn't load due to server timeouts. The trajectory predi
 
 ## License
 
-CC0 1.0 Universal
+MIT License 
 
 ## Contact
 
